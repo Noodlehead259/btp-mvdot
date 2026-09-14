@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+*.idx3-ubyte
+*.idx1-ubyte
+*.npz
