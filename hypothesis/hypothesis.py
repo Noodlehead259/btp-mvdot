@@ -22,7 +22,11 @@ def read_idx_images(filename):
 def kmeans(data, k, iterations=100, seed=42):
     torch.manual_seed(seed)
 
-    indices = torch.randperm(data.shape[0], device=device)[:k]
+    indices = torch.randperm(
+        data.shape[0],
+        device=device
+    )[:k]
+
     centers = data[indices].clone()
 
     for _ in range(iterations):
@@ -42,7 +46,11 @@ def kmeans(data, k, iterations=100, seed=42):
             else:
                 new_centers[j] = centers[j]
 
-        if torch.allclose(centers, new_centers, atol=1e-5):
+        if torch.allclose(
+            centers,
+            new_centers,
+            atol=1e-5
+        ):
             centers = new_centers
             break
 
@@ -51,7 +59,10 @@ def kmeans(data, k, iterations=100, seed=42):
     return labels, centers
 
 def best_cluster_mapping(clean_labels, noisy_labels, k):
-    overlap = np.zeros((k, k), dtype=np.int64)
+    overlap = np.zeros(
+        (k, k),
+        dtype=np.int64
+    )
 
     for i in range(k):
         for j in range(k):
@@ -71,7 +82,13 @@ def best_cluster_mapping(clean_labels, noisy_labels, k):
                     continue
 
                 new_mask = mask | (1 << clean_cluster)
-                new_score = score + overlap[clean_cluster, noisy_cluster]
+                new_score = (
+                    score +
+                    overlap[
+                        clean_cluster,
+                        noisy_cluster
+                    ]
+                )
 
                 if (
                     new_mask not in new_dp or
@@ -96,17 +113,25 @@ def best_cluster_mapping(clean_labels, noisy_labels, k):
 
 def entropy(labels):
     counts = np.bincount(labels)
-    probabilities = counts[counts > 0] / len(labels)
+
+    probabilities = (
+        counts[counts > 0] /
+        len(labels)
+    )
 
     return -np.sum(
-        probabilities * np.log(probabilities)
+        probabilities *
+        np.log(probabilities)
     )
 
 def nmi(labels_a, labels_b):
     n = len(labels_a)
 
     contingency = np.zeros(
-        (labels_a.max() + 1, labels_b.max() + 1),
+        (
+            labels_a.max() + 1,
+            labels_b.max() + 1
+        ),
         dtype=np.int64
     )
 
@@ -128,7 +153,8 @@ def nmi(labels_a, labels_b):
             mi += (
                 nij / n
             ) * np.log(
-                (nij * n) / (ni * nj)
+                (nij * n) /
+                (ni * nj)
             )
 
     denominator = np.sqrt(
@@ -145,7 +171,10 @@ def ari(labels_a, labels_b):
     n = len(labels_a)
 
     contingency = np.zeros(
-        (labels_a.max() + 1, labels_b.max() + 1),
+        (
+            labels_a.max() + 1,
+            labels_b.max() + 1
+        ),
         dtype=np.int64
     )
 
@@ -160,23 +189,38 @@ def ari(labels_a, labels_b):
     )
 
     row_sum = np.sum(
-        combinations_2(contingency.sum(axis=1))
+        combinations_2(
+            contingency.sum(axis=1)
+        )
     )
 
     col_sum = np.sum(
-        combinations_2(contingency.sum(axis=0))
+        combinations_2(
+            contingency.sum(axis=0)
+        )
     )
 
     total = combinations_2(n)
 
-    expected = row_sum * col_sum / total
+    expected = (
+        row_sum *
+        col_sum /
+        total
+    )
 
-    maximum = (row_sum + col_sum) / 2
+    maximum = (
+        row_sum +
+        col_sum
+    ) / 2
 
     if maximum == expected:
         return 1.0
 
-    return (index - expected) / (maximum - expected)
+    return (
+        index - expected
+    ) / (
+        maximum - expected
+    )
 
 def run_experiment(images, sigma):
     normalized_images = (
@@ -187,7 +231,10 @@ def run_experiment(images, sigma):
         normalized_images.reshape(-1, 784)
     ).to(device)
 
-    generator = torch.Generator(device=device)
+    generator = torch.Generator(
+        device=device
+    )
+
     generator.manual_seed(42)
 
     noise = torch.randn(
@@ -214,8 +261,17 @@ def run_experiment(images, sigma):
         seed=42
     )
 
-    clean_labels = clean_labels.cpu().numpy()
-    noisy_labels = noisy_labels.cpu().numpy()
+    clean_labels = (
+        clean_labels
+        .cpu()
+        .numpy()
+    )
+
+    noisy_labels = (
+        noisy_labels
+        .cpu()
+        .numpy()
+    )
 
     mapping, overlap = best_cluster_mapping(
         clean_labels,
@@ -232,6 +288,14 @@ def run_experiment(images, sigma):
         clean_labels != aligned_noisy_labels
     )[0]
 
+    changed_clean_images = clean_data[
+        changed_indices
+    ].cpu().numpy().reshape(-1, 28, 28)
+
+    changed_noisy_images = noisy_data[
+        changed_indices
+    ].cpu().numpy().reshape(-1, 28, 28)
+
     disagreement = (
         len(changed_indices) /
         len(images)
@@ -242,51 +306,125 @@ def run_experiment(images, sigma):
         "total_images": len(images),
         "changed_images": len(changed_indices),
         "disagreement_rate": disagreement,
-        "nmi": nmi(clean_labels, aligned_noisy_labels),
-        "ari": ari(clean_labels, aligned_noisy_labels)
+        "nmi": nmi(
+            clean_labels,
+            aligned_noisy_labels
+        ),
+        "ari": ari(
+            clean_labels,
+            aligned_noisy_labels
+        )
     }
 
-    return result, clean_labels, aligned_noisy_labels, changed_indices
+    return (
+        result,
+        clean_labels,
+        aligned_noisy_labels,
+        changed_indices,
+        changed_clean_images,
+        changed_noisy_images
+    )
 
-project_root = Path(__file__).resolve().parent.parent
+project_root = (
+    Path(__file__).resolve().parent.parent
+)
 
 images = read_idx_images(
-    str(project_root / "data" / "train-images.idx3-ubyte")
+    str(
+        project_root /
+        "data" /
+        "train-images.idx3-ubyte"
+    )
 )
 
 print("device:", device)
-print("gpu:", torch.cuda.get_device_name(0))
-print("total images:", len(images))
+print(
+    "gpu:",
+    torch.cuda.get_device_name(0)
+)
+print(
+    "total images:",
+    len(images)
+)
 print("starting experiment...")
 
 sigma = 0.25
 
-result, clean_labels, noisy_labels, changed_indices = run_experiment(
+(
+    result,
+    clean_labels,
+    noisy_labels,
+    changed_indices,
+    changed_clean_images,
+    changed_noisy_images
+) = run_experiment(
     images,
     sigma
 )
 
 print()
-print("sigma:", result["sigma"])
-print("total images:", result["total_images"])
-print("changed images:", result["changed_images"])
+print(
+    "sigma:",
+    result["sigma"]
+)
+
+print(
+    "total images:",
+    result["total_images"]
+)
+
+print(
+    "changed images:",
+    result["changed_images"]
+)
+
 print(
     "disagreement rate:",
     result["disagreement_rate"] * 100,
     "%"
 )
-print("nmi:", result["nmi"])
-print("ari:", result["ari"])
+
+print(
+    "nmi:",
+    result["nmi"]
+)
+
+print(
+    "ari:",
+    result["ari"]
+)
 
 np.savez_compressed(
-    project_root / "hypothesis" / "results" / "labels_sigma_025.npz",
+    project_root /
+    "hypothesis" /
+    "results" /
+    "labels_sigma_025.npz",
     clean_labels=clean_labels,
     noisy_labels=noisy_labels,
     changed_indices=changed_indices
 )
 
+np.savez_compressed(
+    project_root /
+    "hypothesis" /
+    "results" /
+    "changed_samples_sigma_025.npz",
+    changed_indices=changed_indices,
+    clean_images=changed_clean_images,
+    noisy_images=changed_noisy_images,
+    clean_labels=clean_labels[
+        changed_indices
+    ],
+    noisy_labels=noisy_labels[
+        changed_indices
+    ]
+)
+
 with open(
-    project_root / "hypothesis" / "results" / "metrics.csv",
+    project_root /
+    "hypothesis" /
+    "results" /
+    "metrics.csv",
     "w",
     newline=""
 ) as f:
