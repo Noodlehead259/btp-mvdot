@@ -31,3 +31,5 @@
 - Created a normalized cluster transition matrix showing the percentage of samples transitioning from each clean cluster to each noisy cluster.
 - Added per-cluster instability measurements to quantify the percentage of samples whose assignments changed within each clean cluster.
 - Completed the first research-quality visualization of cluster assignment instability under Gaussian noise.
+- Created a visualization of representative samples whose cluster assignments changed between the clean and noisy views.
+- Created a noise sensitivity visualization showing cluster disagreement, NMI, and ARI for σ values ranging from 0.00 to 0.50.
