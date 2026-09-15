@@ -1,4 +1,3 @@
-import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 
@@ -7,7 +6,8 @@ def create_dataloader(
     view2,
     labels,
     batch_size=256,
-    shuffle=True
+    shuffle=True,
+    drop_last=False
 ):
     dataset = TensorDataset(
         view1,
@@ -19,5 +19,6 @@ def create_dataloader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        drop_last=True
+        drop_last=drop_last,
+        pin_memory=True
     )

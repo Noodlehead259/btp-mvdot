@@ -7,4 +7,7 @@ class reconstruction_loss(nn.Module):
         super().__init__()
 
     def forward(self, x, x_hat):
-        return f.mse_loss(x_hat, x)
+        return f.mse_loss(
+            x_hat,
+            x
+        )

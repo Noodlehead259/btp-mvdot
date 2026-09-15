@@ -4,15 +4,30 @@ import torch.nn.functional as f
 from mvdot.ot.sinkhorn import sinkhorn
 
 
-def sample_to_cluster_cost(features, centers):
-    features = f.normalize(features, p=2, dim=1)
-    centers = f.normalize(centers, p=2, dim=1)
+def sample_to_cluster_cost(
+    features,
+    centers
+):
+    features = f.normalize(
+        features,
+        p=2,
+        dim=1
+    )
 
-    similarity = features @ centers.t()
+    centers = f.normalize(
+        centers,
+        p=2,
+        dim=1
+    )
 
-    cost = 2.0 - 2.0 * similarity
+    similarity = (
+        features @ centers.t()
+    )
 
-    return cost
+    return (
+        2.0
+        - 2.0 * similarity
+    )
 
 
 def sample_to_cluster_transport(
@@ -34,6 +49,18 @@ def sample_to_cluster_transport(
         device=features.device,
         dtype=features.dtype
     ) / n
+
+    weights = weights.to(
+        features.device,
+        features.dtype
+    )
+
+    weights = (
+        weights
+        / weights.sum().clamp_min(
+            1e-12
+        )
+    )
 
     transport = sinkhorn(
         cost,

@@ -6,14 +6,14 @@ def cluster_probabilities(
     centers,
     temperature=1.0
 ):
-    similarity = features @ centers.t()
+    similarity = (
+        features @ centers.t()
+    )
 
-    probabilities = torch.softmax(
+    return torch.softmax(
         similarity / temperature,
         dim=1
     )
-
-    return probabilities
 
 
 def semantic_compatibility(
@@ -25,12 +25,10 @@ def semantic_compatibility(
         @ probabilities2.t()
     )
 
-    compatibility = torch.clamp(
+    return torch.clamp(
         compatibility,
         min=1e-12
     )
-
-    return compatibility
 
 
 def semantic_cost(
@@ -59,7 +57,9 @@ def semantic_matching_loss(
 
     return torch.sum(
         transport
-        * torch.log(compatibility)
+        * torch.log(
+            compatibility
+        )
     )
 
 
@@ -75,12 +75,10 @@ def view_weights(
         distances + eps
     )
 
-    weights = (
+    return (
         inverse_distances
         / inverse_distances.sum()
     )
-
-    return weights
 
 
 def total_semantic_matching_loss(
@@ -92,32 +90,34 @@ def total_semantic_matching_loss(
         transport_costs
     )
 
-    num_views = len(
-        probabilities
-    )
-
-    loss = torch.tensor(
-        0.0,
+    loss = torch.zeros(
+        (),
         device=probabilities[0].device,
         dtype=probabilities[0].dtype
     )
 
-    for m in range(num_views):
-        for n in range(num_views):
+    num_views = len(
+        probabilities
+    )
+
+    for m in range(
+        num_views
+    ):
+        for n in range(
+            num_views
+        ):
             if m == n:
                 continue
-
-            pair_loss = semantic_matching_loss(
-                transports[(m, n)],
-                probabilities[m],
-                probabilities[n]
-            )
 
             loss = (
                 loss
                 + weights[m]
                 * weights[n]
-                * pair_loss
+                * semantic_matching_loss(
+                    transports[(m, n)],
+                    probabilities[m],
+                    probabilities[n]
+                )
             )
 
     return loss, weights

@@ -1,30 +1,59 @@
 import torch
 
 
-def knn_graph(x, k=10, chunk_size=512):
+def knn_graph(
+    x,
+    k=10,
+    chunk_size=512
+):
     n = x.size(0)
+
+    if n <= 1:
+        raise ValueError(
+            "at least two samples are required"
+        )
+
+    k = min(
+        k,
+        n - 1
+    )
+
+    x_norm = (
+        x * x
+    ).sum(
+        dim=1
+    )
+
     edges = []
 
-    x_norm = (x * x).sum(dim=1)
-
-    for start in range(0, n, chunk_size):
-        end = min(start + chunk_size, n)
+    for start in range(
+        0,
+        n,
+        chunk_size
+    ):
+        end = min(
+            start + chunk_size,
+            n
+        )
 
         chunk = x[start:end]
 
         distance = (
             x_norm[start:end].unsqueeze(1)
             + x_norm.unsqueeze(0)
-            - 2.0 * (chunk @ x.t())
+            - 2.0 * (
+                chunk @ x.t()
+            )
         )
 
-        distance = torch.clamp(distance, min=0.0)
-
-        local_k = min(k + 1, n)
+        distance = torch.clamp(
+            distance,
+            min=0.0
+        )
 
         _, indices = torch.topk(
             distance,
-            k=local_k,
+            k=k + 1,
             dim=1,
             largest=False
         )
@@ -35,7 +64,11 @@ def knn_graph(x, k=10, chunk_size=512):
             start,
             end,
             device=x.device
-        ).unsqueeze(1).expand_as(indices)
+        ).unsqueeze(1)
+
+        rows = rows.expand_as(
+            indices
+        )
 
         edges.append(
             torch.stack(
@@ -47,12 +80,20 @@ def knn_graph(x, k=10, chunk_size=512):
             )
         )
 
-    edges = torch.cat(edges, dim=1)
+    edges = torch.cat(
+        edges,
+        dim=1
+    )
 
-    reverse_edges = edges.flip(0)
+    reverse_edges = edges.flip(
+        0
+    )
 
     edges = torch.cat(
-        [edges, reverse_edges],
+        [
+            edges,
+            reverse_edges
+        ],
         dim=1
     )
 
@@ -104,28 +145,43 @@ def graph_laplacian(graph):
     return degree
 
 
-def manifold_regularization(z, graph, degree):
+def manifold_regularization(
+    z,
+    graph,
+    degree
+):
     indices = graph.indices()
     values = graph.values()
 
     source = indices[0]
     target = indices[1]
 
-    z_squared = (z * z).sum(dim=1)
+    z_squared = (
+        z * z
+    ).sum(
+        dim=1
+    )
 
     first_term = torch.sum(
         degree * z_squared
     )
 
     dot_products = (
-        z[source] * z[target]
-    ).sum(dim=1)
-
-    second_term = torch.sum(
-        values * dot_products
+        z[source]
+        * z[target]
+    ).sum(
+        dim=1
     )
 
-    return first_term - second_term
+    second_term = torch.sum(
+        values
+        * dot_products
+    )
+
+    return (
+        first_term
+        - second_term
+    )
 
 
 def manifold_matching_loss(
@@ -151,4 +207,8 @@ def manifold_matching_loss(
         + lambda_graph * graph_cost
     )
 
-    return loss, transport_cost, graph_cost
+    return (
+        loss,
+        transport_cost,
+        graph_cost
+    )
