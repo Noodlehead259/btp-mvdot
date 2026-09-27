@@ -162,26 +162,20 @@ def manifold_regularization(
         dim=1
     )
 
-    first_term = torch.sum(
-        degree * z_squared
-    )
-
-    dot_products = (
+    pairwise_squared_distance = (
         z[source]
-        * z[target]
-    ).sum(
+        - z[target]
+    ).pow(2).sum(
         dim=1
     )
 
-    second_term = torch.sum(
-        values
-        * dot_products
+    edge_mass = values.sum().clamp_min(
+        1.0
     )
 
-    return (
-        first_term
-        - second_term
-    )
+    return 0.5 * torch.sum(
+        values * pairwise_squared_distance
+    ) / edge_mass
 
 
 def manifold_matching_loss(

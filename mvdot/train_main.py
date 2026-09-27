@@ -13,8 +13,7 @@ sys.path.append(
 )
 
 from mvdot.data.preprocessing import (
-    load_images,
-    load_labels,
+    load_mnist,
     create_noisy_view
 )
 
@@ -109,12 +108,8 @@ print(
 )
 
 
-images = load_images(
-    "data/train-images.idx3-ubyte"
-)
-
-labels = load_labels(
-    "data/train-labels.idx1-ubyte"
+images, labels = load_mnist(
+    "data"
 )
 
 noisy_images = create_noisy_view(
@@ -139,7 +134,7 @@ loader = create_dataloader(
     dataset.labels,
     batch_size=batch_size,
     shuffle=True,
-    drop_last=True
+    drop_last=False
 )
 
 
@@ -548,12 +543,8 @@ for epoch in range(
 
 
         lmm = (
-            transport_cost1
-            + transport_cost2
-            + lambda_graph * (
-                graph_cost1
-                + graph_cost2
-            )
+            manifold1[0]
+            + manifold2[0]
         )
 
 
@@ -666,6 +657,14 @@ for epoch in range(
 
         loss.backward()
 
+        torch.nn.utils.clip_grad_norm_(
+            list(model1.parameters())
+            + list(model2.parameters())
+            + list(matching.parameters())
+            + list(bary.parameters()),
+            max_norm=5.0
+        )
+
         optimizer.step()
 
 
@@ -756,6 +755,9 @@ for epoch in range(
         "barycenter weight sum:",
         bary.weights.sum().item()
     )
+    
+    print("weight min:", bary.weights.min().item())
+    print("weight max:", bary.weights.max().item())
 
     print()
 

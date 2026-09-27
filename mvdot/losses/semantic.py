@@ -55,7 +55,7 @@ def semantic_matching_loss(
         probabilities2
     )
 
-    return torch.sum(
+    return -torch.sum(
         transport
         * torch.log(
             compatibility

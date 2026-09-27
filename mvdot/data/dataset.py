@@ -71,6 +71,14 @@ class noisy_mnist(Dataset):
             torch.from_numpy(permutation)
         ]
 
+        self.permutation = torch.from_numpy(
+            permutation
+        ).long()
+
+        self.aligned_mask = torch.from_numpy(
+            permutation == np.arange(n)
+        ).bool()
+
         self.aligned_rate = aligned_rate
 
     def __len__(self):
