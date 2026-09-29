@@ -274,6 +274,8 @@ def hybrid_cost(
 def cross_view_transport(
     semantic_cost,
     topology_cost_matrix,
+    source_mass=None,
+    target_mass=None,
     epsilon=0.1,
     iterations=100
 ):
@@ -285,17 +287,29 @@ def cross_view_transport(
     n1 = cost.size(0)
     n2 = cost.size(1)
 
-    source_mass = torch.ones(
-        n1,
-        device=cost.device,
-        dtype=cost.dtype
-    ) / n1
+    if source_mass is None:
+        source_mass = torch.ones(
+            n1,
+            device=cost.device,
+            dtype=cost.dtype
+        ) / n1
+    else:
+        source_mass = source_mass.to(
+            cost.device,
+            cost.dtype
+        )
 
-    target_mass = torch.ones(
-        n2,
-        device=cost.device,
-        dtype=cost.dtype
-    ) / n2
+    if target_mass is None:
+        target_mass = torch.ones(
+            n2,
+            device=cost.device,
+            dtype=cost.dtype
+        ) / n2
+    else:
+        target_mass = target_mass.to(
+            cost.device,
+            cost.dtype
+        )
 
     transport = sinkhorn(
         cost,

@@ -1,5 +1,6 @@
 import os
 import sys
+from collections.abc import Mapping
 
 import torch
 from sklearn.metrics import (
@@ -28,6 +29,11 @@ from mvdot.inference.consensus import (
     fuse_batch_representations,
     predict_clusters,
     select_reference_view
+)
+from mvdot.losses.confidence import (
+    cross_view_agreement,
+    normalize_source_mass,
+    sample_confidence
 )
 
 
@@ -87,6 +93,43 @@ def clustering_accuracy(
     return best / len(labels)
 
 
+def load_autoencoder_checkpoint(
+    model,
+    state_dict: Mapping
+):
+    """Load current or pre-gate checkpoints without hiding unrelated errors."""
+    model_keys = set(model.state_dict())
+    checkpoint_keys = set(state_dict)
+    missing_keys = model_keys - checkpoint_keys
+    unexpected_keys = checkpoint_keys - model_keys
+    gate_keys = {
+        "reliability_gate.weight",
+        "reliability_gate.bias"
+    }
+
+    if unexpected_keys or not missing_keys.issubset(gate_keys):
+        raise RuntimeError(
+            "Incompatible autoencoder checkpoint: "
+            f"missing={sorted(missing_keys)}, "
+            f"unexpected={sorted(unexpected_keys)}"
+        )
+
+    model.load_state_dict(
+        state_dict,
+        strict=False
+    )
+
+    if missing_keys:
+        with torch.no_grad():
+            model.reliability_gate.weight.zero_()
+            model.reliability_gate.bias.fill_(10.0)
+        print(
+            "Warning: legacy checkpoint detected; "
+            "reliability gates were not stored. "
+            "Using an open gate for evaluation."
+        )
+
+
 device = torch.device(
     "cuda"
     if torch.cuda.is_available()
@@ -119,8 +162,14 @@ bary = barycenter(
     feature_dim=checkpoint["latent_dim"]
 ).to(device)
 
-model1.load_state_dict(checkpoint["model1"])
-model2.load_state_dict(checkpoint["model2"])
+load_autoencoder_checkpoint(
+    model1,
+    checkpoint["model1"]
+)
+load_autoencoder_checkpoint(
+    model2,
+    checkpoint["model2"]
+)
 matching.load_state_dict(checkpoint["matching"])
 bary.load_state_dict(checkpoint["barycenter"])
 
@@ -175,6 +224,10 @@ loader = torch.utils.data.DataLoader(
 
 predictions = []
 true_labels = []
+confidence_values1 = []
+confidence_values2 = []
+gate_values1 = []
+gate_values2 = []
 offset = 0
 
 with torch.no_grad():
@@ -185,8 +238,21 @@ with torch.no_grad():
         view1 = view1.to(device, non_blocking=True)
         view2 = view2.to(device, non_blocking=True)
 
-        h1 = matching(model1.encode(view1))
-        h2 = matching(model2.encode(view2))
+        raw_z1, z1, gate1, xhat1 = model1(view1)
+        raw_z2, z2, gate2, xhat2 = model2(view2)
+
+        h1 = matching(z1)
+        h2 = matching(z2)
+
+        probabilities1 = torch.softmax(
+            h1 @ centers.t(),
+            dim=1
+        )
+
+        probabilities2 = torch.softmax(
+            h2 @ centers.t(),
+            dim=1
+        )
 
         p12 = compute_cross_view_plan(
             h1,
@@ -195,6 +261,75 @@ with torch.no_grad():
             checkpoint["epsilon"],
             checkpoint["sinkhorn_iterations"],
             checkpoint["cross_view_top_k"]
+        )
+
+        agreement1, agreement2 = cross_view_agreement(
+            probabilities1,
+            probabilities2,
+            p12
+        )
+
+        confidence1 = sample_confidence(
+            (view1, xhat1),
+            probabilities1,
+            agreement1,
+            reconstruction_temperature=checkpoint.get(
+                "confidence_reconstruction_temperature",
+                0.05
+            ),
+            reconstruction_exponent=checkpoint.get(
+                "confidence_reconstruction_exponent",
+                1.0
+            ),
+            posterior_exponent=checkpoint.get(
+                "confidence_posterior_exponent",
+                1.0
+            ),
+            agreement_exponent=checkpoint.get(
+                "confidence_agreement_exponent",
+                1.0
+            )
+        )
+
+        confidence2 = sample_confidence(
+            (view2, xhat2),
+            probabilities2,
+            agreement2,
+            reconstruction_temperature=checkpoint.get(
+                "confidence_reconstruction_temperature",
+                0.05
+            ),
+            reconstruction_exponent=checkpoint.get(
+                "confidence_reconstruction_exponent",
+                1.0
+            ),
+            posterior_exponent=checkpoint.get(
+                "confidence_posterior_exponent",
+                1.0
+            ),
+            agreement_exponent=checkpoint.get(
+                "confidence_agreement_exponent",
+                1.0
+            )
+        )
+
+        source_mass1 = normalize_source_mass(
+            confidence1
+        )
+
+        source_mass2 = normalize_source_mass(
+            confidence2
+        )
+
+        p12 = compute_cross_view_plan(
+            h1,
+            h2,
+            centers,
+            checkpoint["epsilon"],
+            checkpoint["sinkhorn_iterations"],
+            checkpoint["cross_view_top_k"],
+            source_mass=source_mass1,
+            target_mass=source_mass2
         )
 
         fused = fuse_batch_representations(
@@ -211,10 +346,26 @@ with torch.no_grad():
             predict_clusters(fused, centers).cpu()
         )
         true_labels.append(batch_labels)
+        confidence_values1.append(confidence1.cpu())
+        confidence_values2.append(confidence2.cpu())
+        gate_values1.append(gate1.mean(dim=1).cpu())
+        gate_values2.append(gate2.mean(dim=1).cpu())
         offset = end
 
 predictions = torch.cat(predictions).numpy()
 true_labels = torch.cat(true_labels).numpy()
+confidence_values1 = torch.cat(
+    confidence_values1
+).numpy()
+confidence_values2 = torch.cat(
+    confidence_values2
+).numpy()
+gate_values1 = torch.cat(
+    gate_values1
+).numpy()
+gate_values2 = torch.cat(
+    gate_values2
+).numpy()
 
 acc = clustering_accuracy(
     torch.tensor(true_labels),
@@ -242,3 +393,19 @@ print("view weight 2:", view_weight2)
 print("acc:", acc)
 print("nmi:", nmi)
 print("ari:", ari)
+print(
+    "mean confidence view 1:",
+    confidence_values1.mean()
+)
+print(
+    "mean confidence view 2:",
+    confidence_values2.mean()
+)
+print(
+    "mean gate activation view 1:",
+    gate_values1.mean()
+)
+print(
+    "mean gate activation view 2:",
+    gate_values2.mean()
+)

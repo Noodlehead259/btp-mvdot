@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180">
+  <defs>
+    <linearGradient id="header" x1="0" x2="1">
+      <stop offset="0" stop-color="#17324d"/>
+      <stop offset="1" stop-color="#245b78"/>
+    </linearGradient>
+    <linearGradient id="view" x1="0" x2="1">
+      <stop offset="0" stop-color="#e8f4fb"/>
+      <stop offset="1" stop-color="#d7edf7"/>
+    </linearGradient>
+    <linearGradient id="novelty" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff3d6"/>
+      <stop offset="1" stop-color="#ffe3a3"/>
+    </linearGradient>
+    <linearGradient id="output" x1="0" x2="1">
+      <stop offset="0" stop-color="#e8f7ed"/>
+      <stop offset="1" stop-color="#ccebd8"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#3b5366"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#17324d" flood-opacity="0.18"/>
+    </filter>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: white; }
+      .subtitle { font: 400 17px Arial, sans-serif; fill: #d9edf5; }
+      .box-title { font: 700 20px Arial, sans-serif; fill: #17324d; }
+      .text { font: 400 16px Arial, sans-serif; fill: #294052; }
+      .small { font: 400 14px Arial, sans-serif; fill: #425b6b; }
+      .label { font: 700 15px Arial, sans-serif; fill: #8a5a00; }
+      .arrow { stroke: #3b5366; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .dashed { stroke-dasharray: 9 7; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1180" fill="#f7fafc"/>
+  <rect x="35" y="28" width="1530" height="104" rx="18" fill="url(#header)" filter="url(#shadow)"/>
+  <text x="800" y="72" text-anchor="middle" class="title">Gated Confidence-Weighted MvDOT Pipeline</text>
+  <text x="800" y="103" text-anchor="middle" class="subtitle">Two-view NoisyMNIST workflow: representation learning, optimal transport, consensus fusion, and evaluation</text>
+
+  <!-- Input -->
+  <rect x="570" y="165" width="460" height="72" rx="14" fill="#edf2f6" stroke="#8ea4b3" stroke-width="2" filter="url(#shadow)"/>
+  <text x="800" y="195" text-anchor="middle" class="box-title">NoisyMNIST multi-view input</text>
+  <text x="800" y="220" text-anchor="middle" class="text">View 1: clean image  |  View 2: noisy / shuffled image</text>
+  <path d="M800 237 L800 275" class="arrow"/>
+
+  <!-- View branches -->
+  <rect x="105" y="295" width="590" height="225" rx="18" fill="url(#view)" stroke="#5d9dbb" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="905" y="295" width="590" height="225" rx="18" fill="url(#view)" stroke="#5d9dbb" stroke-width="2" filter="url(#shadow)"/>
+  <text x="400" y="330" text-anchor="middle" class="box-title">View 1 encoder-decoder</text>
+  <text x="1200" y="330" text-anchor="middle" class="box-title">View 2 encoder-decoder</text>
+  <text x="145" y="365" class="text">Input x¹ → encoder → raw latent z¹</text>
+  <text x="945" y="365" class="text">Input x² → encoder → raw latent z²</text>
+  <rect x="145" y="390" width="510" height="88" rx="12" fill="url(#novelty)" stroke="#d49a2a" stroke-width="2"/>
+  <rect x="945" y="390" width="510" height="88" rx="12" fill="url(#novelty)" stroke="#d49a2a" stroke-width="2"/>
+  <text x="400" y="420" text-anchor="middle" class="label">NOVELTY 1: learnable reliability gate</text>
+  <text x="1200" y="420" text-anchor="middle" class="label">NOVELTY 1: learnable reliability gate</text>
+  <text x="400" y="447" text-anchor="middle" class="text">gᵛ = sigmoid(Wᵥzᵛ + bᵥ),  z̃ᵛ = gᵛ ⊙ zᵛ</text>
+  <text x="1200" y="447" text-anchor="middle" class="text">gᵛ = sigmoid(Wᵥzᵛ + bᵥ),  z̃ᵛ = gᵛ ⊙ zᵛ</text>
+  <text x="400" y="503" text-anchor="middle" class="small">Decode z̃¹ → x̂¹ and retain gate activations</text>
+  <text x="1200" y="503" text-anchor="middle" class="small">Decode z̃² → x̂² and retain gate activations</text>
+
+  <path d="M800 275 L400 295" class="arrow"/>
+  <path d="M800 275 L1200 295" class="arrow"/>
+  <path d="M400 520 L400 565" class="arrow"/>
+  <path d="M1200 520 L1200 565" class="arrow"/>
+
+  <!-- Matching and confidence -->
+  <rect x="105" y="580" width="590" height="190" rx="18" fill="#f1eefb" stroke="#8b7cc0" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="905" y="580" width="590" height="190" rx="18" fill="#f1eefb" stroke="#8b7cc0" stroke-width="2" filter="url(#shadow)"/>
+  <text x="400" y="615" text-anchor="middle" class="box-title">View 1 representation signals</text>
+  <text x="1200" y="615" text-anchor="middle" class="box-title">View 2 representation signals</text>
+  <text x="145" y="650" class="text">• reconstruction confidence from x¹ − x̂¹</text>
+  <text x="145" y="680" class="text">• semantic posterior certainty</text>
+  <text x="145" y="710" class="text">• cross-view agreement from preliminary OT</text>
+  <text x="945" y="650" class="text">• reconstruction confidence from x² − x̂²</text>
+  <text x="945" y="680" class="text">• semantic posterior certainty</text>
+  <text x="945" y="710" class="text">• cross-view agreement from preliminary OT</text>
+  <text x="400" y="748" text-anchor="middle" class="small">confidence q¹ → normalized source mass a¹</text>
+  <text x="1200" y="748" text-anchor="middle" class="small">confidence q² → normalized source mass a²</text>
+
+  <!-- Center path -->
+  <path d="M695 675 L760 675" class="arrow"/>
+  <path d="M905 675 L840 675" class="arrow"/>
+  <rect x="700" y="625" width="200" height="100" rx="14" fill="#e7edf2" stroke="#6d8798" stroke-width="2"/>
+  <text x="800" y="657" text-anchor="middle" class="box-title">Shared matching</text>
+  <text x="800" y="683" text-anchor="middle" class="small">semantic probabilities</text>
+  <text x="800" y="705" text-anchor="middle" class="small">and preliminary OT</text>
+
+  <path d="M400 770 L400 815" class="arrow"/>
+  <path d="M1200 770 L1200 815" class="arrow"/>
+
+  <!-- OT -->
+  <rect x="105" y="830" width="1390" height="145" rx="18" fill="url(#novelty)" stroke="#d49a2a" stroke-width="2" filter="url(#shadow)"/>
+  <text x="800" y="865" text-anchor="middle" class="label">NOVELTY 2: confidence-weighted optimal transport</text>
+  <text x="800" y="895" text-anchor="middle" class="text">Use confidence-derived source masses in sample-to-cluster and cross-view Sinkhorn transport</text>
+  <text x="800" y="923" text-anchor="middle" class="text">Tᵛ = Sinkhorn(Cᵛ, aᵛ, b)  →  transport-weighted barycenter centers and view matching</text>
+  <text x="800" y="951" text-anchor="middle" class="small">low-confidence samples contribute less mass; target cluster weights remain normalized</text>
+
+  <path d="M400 815 L400 830" class="arrow"/>
+  <path d="M1200 815 L1200 830" class="arrow"/>
+
+  <!-- Outputs -->
+  <path d="M800 975 L800 1015" class="arrow"/>
+  <rect x="105" y="1030" width="430" height="92" rx="14" fill="url(#output)" stroke="#5a9b70" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="585" y="1030" width="430" height="92" rx="14" fill="url(#output)" stroke="#5a9b70" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="1065" y="1030" width="430" height="92" rx="14" fill="url(#output)" stroke="#5a9b70" stroke-width="2" filter="url(#shadow)"/>
+  <text x="320" y="1063" text-anchor="middle" class="box-title">Barycenter update</text>
+  <text x="320" y="1090" text-anchor="middle" class="small">transport-weighted centers and weights</text>
+  <text x="800" y="1063" text-anchor="middle" class="box-title">Consensus fusion</text>
+  <text x="800" y="1090" text-anchor="middle" class="small">semantic-topological cross-view labels</text>
+  <text x="1280" y="1063" text-anchor="middle" class="box-title">Evaluation</text>
+  <text x="1280" y="1090" text-anchor="middle" class="small">ACC, NMI, ARI, confidence and gate metrics</text>
+  <path d="M800 1015 L320 1030" class="arrow"/>
+  <path d="M800 1015 L800 1030" class="arrow"/>
+  <path d="M800 1015 L1280 1030" class="arrow"/>
+
+  <text x="800" y="1160" text-anchor="middle" class="small">Training objective: Lrec + Lmm + Lsm + λgate Lgate</text>
+</svg>

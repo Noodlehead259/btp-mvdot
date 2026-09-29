@@ -43,6 +43,11 @@ from mvdot.losses.semantic import (
     cluster_probabilities,
     total_semantic_matching_loss
 )
+from mvdot.losses.confidence import (
+    cross_view_agreement,
+    normalize_source_mass,
+    sample_confidence
+)
 
 from mvdot.ot.barycenter_ot import (
     initialize_barycenter
@@ -77,6 +82,8 @@ learning_rate = 3e-4
 epsilon = 0.1
 
 lambda_graph = 0.05
+lambda_gate = 0.01
+gate_target = 0.7
 
 alpha = 0.98
 
@@ -86,6 +93,11 @@ cross_view_top_k = 5
 sinkhorn_iterations = 100
 
 seed = 42
+
+confidence_reconstruction_temperature = 0.05
+confidence_reconstruction_exponent = 1.0
+confidence_posterior_exponent = 1.0
+confidence_agreement_exponent = 1.0
 
 
 torch.manual_seed(
@@ -221,11 +233,11 @@ for epoch in range(
             set_to_none=True
         )
 
-        z1, xhat1 = model1(
+        raw_z1, z1, gate1, xhat1 = model1(
             view1
         )
 
-        z2, xhat2 = model2(
+        raw_z2, z2, gate2, xhat2 = model2(
             view2
         )
 
@@ -280,8 +292,8 @@ model2.eval()
 matching.eval()
 
 
-all_h1 = []
-all_h2 = []
+all_z1 = []
+all_z2 = []
 
 
 with torch.no_grad():
@@ -306,38 +318,30 @@ with torch.no_grad():
             view2
         )
 
-        h1 = matching(
+        all_z1.append(
             z1
         )
 
-        h2 = matching(
+        all_z2.append(
             z2
         )
 
-        all_h1.append(
-            h1
-        )
 
-        all_h2.append(
-            h2
-        )
-
-
-h1_all = torch.cat(
-    all_h1,
+z1_all = torch.cat(
+    all_z1,
     dim=0
 )
 
-h2_all = torch.cat(
-    all_h2,
+z2_all = torch.cat(
+    all_z2,
     dim=0
 )
 
 
 initial_features = torch.cat(
     [
-        h1_all,
-        h2_all
+        z1_all,
+        z2_all
     ],
     dim=0
 )
@@ -367,11 +371,11 @@ bary.weights.copy_(
 )
 
 
-del h1_all
-del h2_all
+del z1_all
+del z2_all
 del initial_features
-del all_h1
-del all_h2
+del all_z1
+del all_z2
 
 
 if torch.cuda.is_available():
@@ -392,8 +396,7 @@ print(
 optimizer = torch.optim.Adam(
     list(model1.parameters())
     + list(model2.parameters())
-    + list(matching.parameters())
-    + list(bary.parameters()),
+    + list(matching.parameters()),
     lr=learning_rate
 )
 
@@ -418,6 +421,9 @@ for epoch in range(
     epoch_lrec = 0.0
     epoch_lmm = 0.0
     epoch_lsm = 0.0
+    epoch_lgate = 0.0
+    epoch_confidence1 = 0.0
+    epoch_confidence2 = 0.0
 
     for batch_index, (
         view1,
@@ -439,11 +445,11 @@ for epoch in range(
             set_to_none=True
         )
 
-        z1, xhat1 = model1(
+        raw_z1, z1, gate1, xhat1 = model1(
             view1
         )
 
-        z2, xhat2 = model2(
+        raw_z2, z2, gate2, xhat2 = model2(
             view2
         )
 
@@ -472,81 +478,10 @@ for epoch in range(
             + lrec2
         )
 
-
-        t1, cost1 = (
-            sample_to_cluster_transport(
-                h1,
-                centers,
-                weights,
-                epsilon=epsilon,
-                iterations=sinkhorn_iterations
-            )
+        lgate = (
+            (gate1.mean() - gate_target).pow(2)
+            + (gate2.mean() - gate_target).pow(2)
         )
-
-        t2, cost2 = (
-            sample_to_cluster_transport(
-                h2,
-                centers,
-                weights,
-                epsilon=epsilon,
-                iterations=sinkhorn_iterations
-            )
-        )
-
-
-        graph1 = knn_graph(
-            z1,
-            k=knn_k,
-            chunk_size=64
-        )
-
-        graph2 = knn_graph(
-            z2,
-            k=knn_k,
-            chunk_size=64
-        )
-
-
-        degree1 = graph_laplacian(
-            graph1
-        )
-
-        degree2 = graph_laplacian(
-            graph2
-        )
-
-
-        manifold1 = manifold_matching_loss(
-            t1,
-            cost1,
-            z1,
-            graph1,
-            degree1,
-            lambda_graph=lambda_graph
-        )
-
-        manifold2 = manifold_matching_loss(
-            t2,
-            cost2,
-            z2,
-            graph2,
-            degree2,
-            lambda_graph=lambda_graph
-        )
-
-
-        transport_cost1 = manifold1[1]
-        transport_cost2 = manifold2[1]
-
-        graph_cost1 = manifold1[2]
-        graph_cost2 = manifold2[2]
-
-
-        lmm = (
-            manifold1[0]
-            + manifold2[0]
-        )
-
 
         probabilities1 = cluster_probabilities(
             h1,
@@ -604,6 +539,132 @@ for epoch in range(
             iterations=sinkhorn_iterations
         )
 
+        agreement1, agreement2 = cross_view_agreement(
+            probabilities1,
+            probabilities2,
+            p12.detach()
+        )
+
+        confidence1 = sample_confidence(
+            (view1, xhat1),
+            probabilities1,
+            agreement1,
+            reconstruction_temperature=(
+                confidence_reconstruction_temperature
+            ),
+            reconstruction_exponent=(
+                confidence_reconstruction_exponent
+            ),
+            posterior_exponent=(
+                confidence_posterior_exponent
+            ),
+            agreement_exponent=(
+                confidence_agreement_exponent
+            )
+        )
+
+        confidence2 = sample_confidence(
+            (view2, xhat2),
+            probabilities2,
+            agreement2,
+            reconstruction_temperature=(
+                confidence_reconstruction_temperature
+            ),
+            reconstruction_exponent=(
+                confidence_reconstruction_exponent
+            ),
+            posterior_exponent=(
+                confidence_posterior_exponent
+            ),
+            agreement_exponent=(
+                confidence_agreement_exponent
+            )
+        )
+
+        source_mass1 = normalize_source_mass(
+            confidence1
+        )
+
+        source_mass2 = normalize_source_mass(
+            confidence2
+        )
+
+        t1, cost1 = sample_to_cluster_transport(
+            h1,
+            centers,
+            weights,
+            source_mass=source_mass1,
+            epsilon=epsilon,
+            iterations=sinkhorn_iterations
+        )
+
+        t2, cost2 = sample_to_cluster_transport(
+            h2,
+            centers,
+            weights,
+            source_mass=source_mass2,
+            epsilon=epsilon,
+            iterations=sinkhorn_iterations
+        )
+
+        graph1 = knn_graph(
+            z1,
+            k=knn_k,
+            chunk_size=64
+        )
+
+        graph2 = knn_graph(
+            z2,
+            k=knn_k,
+            chunk_size=64
+        )
+
+        degree1 = graph_laplacian(
+            graph1
+        )
+
+        degree2 = graph_laplacian(
+            graph2
+        )
+
+        manifold1 = manifold_matching_loss(
+            t1,
+            cost1,
+            z1,
+            graph1,
+            degree1,
+            lambda_graph=lambda_graph
+        )
+
+        manifold2 = manifold_matching_loss(
+            t2,
+            cost2,
+            z2,
+            graph2,
+            degree2,
+            lambda_graph=lambda_graph
+        )
+
+        transport_cost1 = manifold1[1]
+        transport_cost2 = manifold2[1]
+
+        graph_cost1 = manifold1[2]
+        graph_cost2 = manifold2[2]
+
+        lmm = (
+            manifold1[0]
+            + manifold2[0]
+        )
+
+        p12, _ = cross_view_transport(
+            semantic_matrix,
+            topology_matrix,
+            source_mass=source_mass1,
+            target_mass=source_mass2,
+            epsilon=epsilon,
+            iterations=sinkhorn_iterations
+        )
+
 
         p21 = p12.t()
 
@@ -639,6 +700,7 @@ for epoch in range(
             lrec
             + lmm
             + lsm
+            + lambda_gate * lgate
         )
 
 
@@ -660,8 +722,7 @@ for epoch in range(
         torch.nn.utils.clip_grad_norm_(
             list(model1.parameters())
             + list(model2.parameters())
-            + list(matching.parameters())
-            + list(bary.parameters()),
+            + list(matching.parameters()),
             max_norm=5.0
         )
 
@@ -670,7 +731,17 @@ for epoch in range(
 
         with torch.no_grad():
 
-            bary.normalize_centers()
+            bary.update_centers(
+                [
+                    h1,
+                    h2
+                ],
+                [
+                    t1,
+                    t2
+                ],
+                learning_rate=learning_rate
+            )
 
             bary.update_weights(
                 [
@@ -685,6 +756,9 @@ for epoch in range(
         epoch_lrec += lrec.item()
         epoch_lmm += lmm.item()
         epoch_lsm += lsm.item()
+        epoch_lgate += lgate.item()
+        epoch_confidence1 += confidence1.mean().item()
+        epoch_confidence2 += confidence2.mean().item()
 
 
         if (
@@ -722,6 +796,18 @@ for epoch in range(
         loader
     )
 
+    epoch_lgate /= len(
+        loader
+    )
+
+    epoch_confidence1 /= len(
+        loader
+    )
+
+    epoch_confidence2 /= len(
+        loader
+    )
+
 
     print()
     print(
@@ -744,6 +830,21 @@ for epoch in range(
     print(
         "lsm:",
         epoch_lsm
+    )
+
+    print(
+        "lgate:",
+        epoch_lgate
+    )
+
+    print(
+        "mean confidence view 1:",
+        epoch_confidence1
+    )
+
+    print(
+        "mean confidence view 2:",
+        epoch_confidence2
     )
 
     print(
@@ -783,13 +884,28 @@ checkpoint = {
     "learning_rate": learning_rate,
     "epsilon": epsilon,
     "lambda_graph": lambda_graph,
+    "lambda_gate": lambda_gate,
+    "gate_target": gate_target,
     "alpha": alpha,
     "knn_k": knn_k,
     "cross_view_top_k": cross_view_top_k,
     "sinkhorn_iterations": sinkhorn_iterations,
     "warmup_epochs": warmup_epochs,
     "train_epochs": train_epochs,
-    "seed": seed
+    "seed": seed,
+    "confidence_reconstruction_temperature": (
+        confidence_reconstruction_temperature
+    ),
+    "confidence_reconstruction_exponent": (
+        confidence_reconstruction_exponent
+    ),
+    "confidence_posterior_exponent": (
+        confidence_posterior_exponent
+    ),
+    "confidence_agreement_exponent": (
+        confidence_agreement_exponent
+    ),
+    "confidence_aware_transport": True
 }
 
 

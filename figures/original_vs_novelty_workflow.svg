@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1500" viewBox="0 0 1900 1500">
+  <defs>
+    <linearGradient id="head" x1="0" x2="1">
+      <stop offset="0" stop-color="#17324d"/><stop offset="1" stop-color="#28627d"/>
+    </linearGradient>
+    <linearGradient id="orig" x1="0" x2="1">
+      <stop offset="0" stop-color="#e8f4fb"/><stop offset="1" stop-color="#d5eaf5"/>
+    </linearGradient>
+    <linearGradient id="new" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff2cf"/><stop offset="1" stop-color="#ffe1a0"/>
+    </linearGradient>
+    <linearGradient id="out" x1="0" x2="1">
+      <stop offset="0" stop-color="#e6f6eb"/><stop offset="1" stop-color="#ccebd7"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#415969"/>
+    </marker>
+    <style>
+      .title{font:700 34px Arial,sans-serif;fill:white}.subtitle{font:400 17px Arial,sans-serif;fill:#d9edf5}
+      .section{font:700 22px Arial,sans-serif;fill:#17324d}.bt{font:700 18px Arial,sans-serif;fill:#17324d}
+      .tx{font:400 15px Arial,sans-serif;fill:#294052}.sm{font:400 13px Arial,sans-serif;fill:#486070}
+      .nov{font:700 14px Arial,sans-serif;fill:#8a5a00}.arr{stroke:#415969;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .dash{stroke-dasharray:9 7}
+    </style>
+  </defs>
+  <rect width="1900" height="1500" fill="#f7fafc"/>
+  <rect x="35" y="25" width="1830" height="105" rx="18" fill="url(#head)"/>
+  <text x="950" y="70" text-anchor="middle" class="title">Original MvDOT Workflow vs. Proposed Novel Workflow</text>
+  <text x="950" y="101" text-anchor="middle" class="subtitle">Every algorithm block is shown; gold blocks identify additions made in this project</text>
+
+  <rect x="55" y="155" width="875" height="56" rx="12" fill="#dcecf5" stroke="#5d9dbb" stroke-width="2"/>
+  <rect x="970" y="155" width="875" height="56" rx="12" fill="#ffedbd" stroke="#d49a2a" stroke-width="2"/>
+  <text x="492" y="191" text-anchor="middle" class="section">A. Original paper: MvDOT</text>
+  <text x="1407" y="191" text-anchor="middle" class="section">B. Proposed extension: Reliability-Gated Confidence-Weighted MvDOT</text>
+
+  <!-- shared input -->
+  <rect x="570" y="235" width="760" height="72" rx="14" fill="#edf2f6" stroke="#879eae" stroke-width="2"/>
+  <text x="950" y="264" text-anchor="middle" class="bt">Input dataset</text>
+  <text x="950" y="288" text-anchor="middle" class="tx">Aligned and unaligned views {Xᵛ}, labels for evaluation, encoder-decoders, matching network</text>
+  <path d="M950 307 L950 338" class="arr"/>
+
+  <!-- warmup and initialization -->
+  <rect x="85" y="345" width="790" height="125" rx="14" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <rect x="1025" y="345" width="790" height="125" rx="14" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <text x="480" y="376" text-anchor="middle" class="bt">1. Warm-up autoencoder training</text>
+  <text x="1420" y="376" text-anchor="middle" class="bt">1. Warm-up autoencoder training</text>
+  <text x="110" y="407" class="tx">For each view: encode Xᵛ → Zᵛ → decode → X̂ᵛ</text>
+  <text x="110" y="434" class="tx">Minimize reconstruction loss Lrec = ||Xᵛ − X̂ᵛ||²F</text>
+  <text x="1050" y="407" class="tx">For each view: encode Xᵛ → raw Zᵛ → reliability gate → Z̃ᵛ</text>
+  <text x="1050" y="434" class="tx">Decode Z̃ᵛ and optimize reconstruction plus gate regularization</text>
+  <path d="M950 338 L480 345" class="arr"/><path d="M950 338 L1420 345" class="arr"/>
+
+  <rect x="85" y="495" width="790" height="110" rx="14" fill="#edf2f6" stroke="#879eae" stroke-width="2"/>
+  <rect x="1025" y="495" width="790" height="110" rx="14" fill="#edf2f6" stroke="#879eae" stroke-width="2"/>
+  <text x="480" y="527" text-anchor="middle" class="bt">2. Initialize discrete OT barycenter</text>
+  <text x="1420" y="527" text-anchor="middle" class="bt">2. Initialize discrete OT barycenter</text>
+  <text x="110" y="558" class="tx">Stack latent representations from all views</text>
+  <text x="110" y="584" class="tx">Spherical K-means → centers {cₖ} and weights {πₖ}</text>
+  <text x="1050" y="558" class="tx">Stack gated representations {Z̃ᵛ} from all views</text>
+  <text x="1050" y="584" class="tx">Spherical K-means → centers {cₖ} and weights {πₖ}</text>
+  <path d="M480 470 L480 495" class="arr"/><path d="M1420 470 L1420 495" class="arr"/>
+
+  <!-- loop boundary -->
+  <rect x="65" y="630" width="810" height="490" rx="18" fill="#fafdff" stroke="#91aaba" stroke-width="2"/>
+  <rect x="1005" y="630" width="830" height="490" rx="18" fill="#fffdf8" stroke="#d49a2a" stroke-width="2"/>
+  <text x="90" y="660" class="section">3. Joint optimization loop</text>
+  <text x="1030" y="660" class="section">3. Joint optimization loop with novelty</text>
+
+  <!-- original loop -->
+  <rect x="100" y="680" width="740" height="73" rx="11" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <text x="470" y="708" text-anchor="middle" class="bt">3.1 Encode each view</text>
+  <text x="470" y="732" text-anchor="middle" class="tx">Zᵛ = Eᵛ(Xᵛ), then matching features Hᵛ = Fᵥ(Zᵛ)</text>
+  <path d="M470 753 L470 770" class="arr"/>
+  <rect x="100" y="775" width="740" height="73" rx="11" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <text x="470" y="803" text-anchor="middle" class="bt">3.2 Sample-to-cluster discrete manifold transport</text>
+  <text x="470" y="827" text-anchor="middle" class="tx">Cost(Hᵛ, cₖ) → Sinkhorn plan Tᵛ with source α and target β</text>
+  <path d="M470 848 L470 865" class="arr"/>
+  <rect x="100" y="870" width="740" height="73" rx="11" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <text x="470" y="898" text-anchor="middle" class="bt">3.3 Manifold matching loss</text>
+  <text x="470" y="922" text-anchor="middle" class="tx">Graph/Laplacian regularization and transport cost → Lmm</text>
+  <path d="M470 943 L470 960" class="arr"/>
+  <rect x="100" y="965" width="740" height="73" rx="11" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <text x="470" y="993" text-anchor="middle" class="bt">3.4 Unpaired semantic-topological matching</text>
+  <text x="470" y="1017" text-anchor="middle" class="tx">Cross-view affinity → matching matrix Pᵐⁿ → semantic loss Lsm</text>
+  <path d="M470 1038 L470 1055" class="arr"/>
+  <rect x="100" y="1060" width="740" height="45" rx="11" fill="#e8f7ed" stroke="#5a9b70" stroke-width="2"/>
+  <text x="470" y="1088" text-anchor="middle" class="tx">3.5 L = Lrec + Lmm + Lsm → update networks, centers, and weights</text>
+
+  <!-- novel loop -->
+  <rect x="1040" y="680" width="760" height="73" rx="11" fill="url(#new)" stroke="#d49a2a" stroke-width="2"/>
+  <text x="1420" y="708" text-anchor="middle" class="nov">NOVELTY 1: learnable latent reliability gate</text>
+  <text x="1420" y="732" text-anchor="middle" class="tx">gᵛ = sigmoid(WᵥZᵛ+bᵥ), Z̃ᵛ = gᵛ ⊙ Zᵛ; use Z̃ᵛ for matching</text>
+  <path d="M1420 753 L1420 770" class="arr"/>
+  <rect x="1040" y="775" width="760" height="73" rx="11" fill="url(#new)" stroke="#d49a2a" stroke-width="2"/>
+  <text x="1420" y="803" text-anchor="middle" class="nov">NOVELTY 2: confidence estimation</text>
+  <text x="1420" y="827" text-anchor="middle" class="tx">Reconstruction quality + posterior certainty + cross-view agreement</text>
+  <path d="M1420 848 L1420 865" class="arr"/>
+  <rect x="1040" y="870" width="760" height="73" rx="11" fill="url(#new)" stroke="#d49a2a" stroke-width="2"/>
+  <text x="1420" y="898" text-anchor="middle" class="nov">NOVELTY 2: confidence-weighted sample-to-cluster OT</text>
+  <text x="1420" y="922" text-anchor="middle" class="tx">Normalize confidence into source mass aᵛ; Sinkhorn(Tᵛ | aᵛ, β)</text>
+  <path d="M1420 943 L1420 960" class="arr"/>
+  <rect x="1040" y="965" width="760" height="73" rx="11" fill="url(#orig)" stroke="#5d9dbb" stroke-width="2"/>
+  <text x="1420" y="993" text-anchor="middle" class="bt">3.4 Manifold and semantic-topological matching</text>
+  <text x="1420" y="1017" text-anchor="middle" class="tx">Gated features, topology, posterior compatibility, and confidence-weighted cross-view OT</text>
+  <path d="M1420 1038 L1420 1055" class="arr"/>
+  <rect x="1040" y="1060" width="760" height="45" rx="11" fill="#e8f7ed" stroke="#5a9b70" stroke-width="2"/>
+  <text x="1420" y="1088" text-anchor="middle" class="tx">3.5 Ltotal = Lrec + Lmm + Lsm + λgateLgate → update all trainable components</text>
+
+  <!-- barycenter explicit updates -->
+  <rect x="85" y="1150" width="790" height="110" rx="14" fill="#edf2f6" stroke="#879eae" stroke-width="2"/>
+  <rect x="1025" y="1150" width="790" height="110" rx="14" fill="#edf2f6" stroke="#879eae" stroke-width="2"/>
+  <text x="480" y="1182" text-anchor="middle" class="bt">4. Explicit barycenter update</text>
+  <text x="480" y="1210" text-anchor="middle" class="tx">Update cₖ using transport-weighted gradients; normalize centers</text>
+  <text x="480" y="1237" text-anchor="middle" class="tx">Momentum update of πₖ</text>
+  <text x="1420" y="1182" text-anchor="middle" class="bt">4. Explicit confidence-aware barycenter update</text>
+  <text x="1420" y="1210" text-anchor="middle" class="tx">Update cₖ using confidence-weighted Tᵛ; normalize centers</text>
+  <text x="1420" y="1237" text-anchor="middle" class="tx">Momentum update of πₖ and record confidence/gate diagnostics</text>
+  <path d="M470 1120 L470 1150" class="arr"/><path d="M1420 1120 L1420 1150" class="arr"/>
+
+  <!-- inference -->
+  <path d="M480 1260 L480 1280" class="arr"/><path d="M1420 1260 L1420 1280" class="arr"/>
+  <rect x="85" y="1290" width="790" height="135" rx="14" fill="url(#out)" stroke="#5a9b70" stroke-width="2"/>
+  <rect x="1025" y="1290" width="790" height="135" rx="14" fill="url(#out)" stroke="#5a9b70" stroke-width="2"/>
+  <text x="480" y="1320" text-anchor="middle" class="bt">5. Inference and consensus clustering</text>
+  <text x="110" y="1351" class="tx">Encode aligned/unpaired views → choose reference view</text>
+  <text x="110" y="1378" class="tx">Compute cross-view matching Pᵐⁿ → realign other view</text>
+  <text x="110" y="1405" class="tx">Concatenate representations → nearest barycenter center → labels</text>
+  <text x="1420" y="1320" text-anchor="middle" class="bt">5. Gated confidence-aware consensus clustering</text>
+  <text x="1050" y="1351" class="tx">Encode → gate → confidence-weighted cross-view transport</text>
+  <text x="1050" y="1378" class="tx">Realign views using semantic-topological plans and aligned mask</text>
+  <text x="1050" y="1405" class="tx">Fuse gated representations → nearest barycenter center → labels</text>
+
+  <text x="950" y="1470" text-anchor="middle" class="sm">Paper objective: Lrec + Lmm + Lsm   |   Proposed objective: Lrec + Lmm + Lsm + λgateLgate with confidence-weighted OT masses</text>
+</svg>

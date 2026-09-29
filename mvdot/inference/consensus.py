@@ -133,7 +133,9 @@ def compute_cross_view_plan(
     centers,
     epsilon,
     sinkhorn_iterations,
-    top_k
+    top_k,
+    source_mass=None,
+    target_mass=None
 ):
     probabilities1 = cluster_probabilities(
         h1,
@@ -181,6 +183,8 @@ def compute_cross_view_plan(
     p12, _ = cross_view_transport(
         semantic_matrix,
         topology_matrix,
+        source_mass=source_mass,
+        target_mass=target_mass,
         epsilon=epsilon,
         iterations=sinkhorn_iterations
     )

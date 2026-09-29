@@ -9,5 +9,6 @@ class reconstruction_loss(nn.Module):
     def forward(self, x, x_hat):
         return f.mse_loss(
             x_hat,
-            x
+            x,
+            reduction="sum"
         )

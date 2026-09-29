@@ -34,6 +34,7 @@ def sample_to_cluster_transport(
     features,
     centers,
     weights,
+    source_mass=None,
     epsilon=0.1,
     iterations=100
 ):
@@ -44,11 +45,23 @@ def sample_to_cluster_transport(
         centers
     )
 
-    source_mass = torch.ones(
-        n,
-        device=features.device,
-        dtype=features.dtype
-    ) / n
+    if source_mass is None:
+        source_mass = torch.ones(
+            n,
+            device=features.device,
+            dtype=features.dtype
+        ) / n
+    else:
+        source_mass = source_mass.to(
+            features.device,
+            features.dtype
+        )
+        source_mass = (
+            source_mass
+            / source_mass.sum().clamp_min(
+                1e-12
+            )
+        )
 
     weights = weights.to(
         features.device,

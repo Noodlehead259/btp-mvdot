@@ -61,6 +61,42 @@ class barycenter(nn.Module):
         )
 
     @torch.no_grad()
+    def update_centers(
+        self,
+        features,
+        transports,
+        learning_rate
+    ):
+        center_gradient = torch.zeros_like(
+            self.centers
+        )
+
+        for feature_view, transport in zip(
+            features,
+            transports
+        ):
+            feature_view = feature_view.detach()
+            transport = transport.detach()
+            cluster_mass = transport.sum(
+                dim=0
+            )
+
+            center_gradient.add_(
+                2.0
+                * (
+                    cluster_mass.unsqueeze(1)
+                    * self.centers
+                    - transport.t() @ feature_view
+                )
+            )
+
+        self.centers.sub_(
+            center_gradient,
+            alpha=learning_rate
+        )
+        self.normalize_centers()
+
+    @torch.no_grad()
     def update_weights(
         self,
         transports,

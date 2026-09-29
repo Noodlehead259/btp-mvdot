@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -22,6 +23,19 @@ class autoencoder(nn.Module):
             )
         )
 
+        self.reliability_gate = nn.Linear(
+            latent_dim,
+            latent_dim
+        )
+
+        nn.init.zeros_(
+            self.reliability_gate.weight
+        )
+        nn.init.constant_(
+            self.reliability_gate.bias,
+            2.0
+        )
+
         self.decoder = nn.Sequential(
             nn.Linear(
                 latent_dim,
@@ -36,13 +50,24 @@ class autoencoder(nn.Module):
         )
 
     def encode(self, x):
-        return self.encoder(x)
+        _, gated_z, _, _ = self.forward(x)
+        return gated_z
+
+    def encode_with_gate(self, x):
+        z = self.encoder(x)
+        gate = torch.sigmoid(
+            self.reliability_gate(z)
+        )
+        gated_z = gate * z
+        return z, gated_z, gate
 
     def decode(self, z):
         return self.decoder(z)
 
     def forward(self, x):
-        z = self.encode(x)
-        x_hat = self.decode(z)
+        z, gated_z, gate = self.encode_with_gate(
+            x
+        )
+        x_hat = self.decode(gated_z)
 
-        return z, x_hat
+        return z, gated_z, gate, x_hat
