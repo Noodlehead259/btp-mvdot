@@ -43,11 +43,7 @@ from mvdot.losses.semantic import (
     cluster_probabilities,
     total_semantic_matching_loss
 )
-from mvdot.losses.confidence import (
-    cross_view_agreement,
-    normalize_source_mass,
-    sample_confidence
-)
+# Novelty 2 disabled: confidence-weighted transport is not used.
 
 from mvdot.ot.barycenter_ot import (
     initialize_barycenter
@@ -70,6 +66,7 @@ latent_dim = 128
 num_clusters = 10
 
 batch_size = 256
+num_training_samples = 1000
 
 warmup_epochs = 10
 train_epochs = 50
@@ -123,6 +120,9 @@ print(
 images, labels = load_mnist(
     "data"
 )
+
+images = images[:num_training_samples]
+labels = labels[:num_training_samples]
 
 noisy_images = create_noisy_view(
     images,
@@ -422,8 +422,6 @@ for epoch in range(
     epoch_lmm = 0.0
     epoch_lsm = 0.0
     epoch_lgate = 0.0
-    epoch_confidence1 = 0.0
-    epoch_confidence2 = 0.0
 
     for batch_index, (
         view1,
@@ -539,61 +537,10 @@ for epoch in range(
             iterations=sinkhorn_iterations
         )
 
-        agreement1, agreement2 = cross_view_agreement(
-            probabilities1,
-            probabilities2,
-            p12.detach()
-        )
-
-        confidence1 = sample_confidence(
-            (view1, xhat1),
-            probabilities1,
-            agreement1,
-            reconstruction_temperature=(
-                confidence_reconstruction_temperature
-            ),
-            reconstruction_exponent=(
-                confidence_reconstruction_exponent
-            ),
-            posterior_exponent=(
-                confidence_posterior_exponent
-            ),
-            agreement_exponent=(
-                confidence_agreement_exponent
-            )
-        )
-
-        confidence2 = sample_confidence(
-            (view2, xhat2),
-            probabilities2,
-            agreement2,
-            reconstruction_temperature=(
-                confidence_reconstruction_temperature
-            ),
-            reconstruction_exponent=(
-                confidence_reconstruction_exponent
-            ),
-            posterior_exponent=(
-                confidence_posterior_exponent
-            ),
-            agreement_exponent=(
-                confidence_agreement_exponent
-            )
-        )
-
-        source_mass1 = normalize_source_mass(
-            confidence1
-        )
-
-        source_mass2 = normalize_source_mass(
-            confidence2
-        )
-
         t1, cost1 = sample_to_cluster_transport(
             h1,
             centers,
             weights,
-            source_mass=source_mass1,
             epsilon=epsilon,
             iterations=sinkhorn_iterations
         )
@@ -602,7 +549,6 @@ for epoch in range(
             h2,
             centers,
             weights,
-            source_mass=source_mass2,
             epsilon=epsilon,
             iterations=sinkhorn_iterations
         )
@@ -655,16 +601,6 @@ for epoch in range(
             manifold1[0]
             + manifold2[0]
         )
-
-        p12, _ = cross_view_transport(
-            semantic_matrix,
-            topology_matrix,
-            source_mass=source_mass1,
-            target_mass=source_mass2,
-            epsilon=epsilon,
-            iterations=sinkhorn_iterations
-        )
-
 
         p21 = p12.t()
 
@@ -757,8 +693,6 @@ for epoch in range(
         epoch_lmm += lmm.item()
         epoch_lsm += lsm.item()
         epoch_lgate += lgate.item()
-        epoch_confidence1 += confidence1.mean().item()
-        epoch_confidence2 += confidence2.mean().item()
 
 
         if (
@@ -800,15 +734,6 @@ for epoch in range(
         loader
     )
 
-    epoch_confidence1 /= len(
-        loader
-    )
-
-    epoch_confidence2 /= len(
-        loader
-    )
-
-
     print()
     print(
         "epoch:",
@@ -835,16 +760,6 @@ for epoch in range(
     print(
         "lgate:",
         epoch_lgate
-    )
-
-    print(
-        "mean confidence view 1:",
-        epoch_confidence1
-    )
-
-    print(
-        "mean confidence view 2:",
-        epoch_confidence2
     )
 
     print(
@@ -905,7 +820,7 @@ checkpoint = {
     "confidence_agreement_exponent": (
         confidence_agreement_exponent
     ),
-    "confidence_aware_transport": True
+    "confidence_aware_transport": False,
 }
 
 

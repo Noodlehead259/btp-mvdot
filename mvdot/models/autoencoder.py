@@ -33,7 +33,7 @@ class autoencoder(nn.Module):
         )
         nn.init.constant_(
             self.reliability_gate.bias,
-            2.0
+            0.0
         )
 
         self.decoder = nn.Sequential(
@@ -50,7 +50,7 @@ class autoencoder(nn.Module):
         )
 
     def encode(self, x):
-        _, gated_z, _, _ = self.forward(x)
+        _, gated_z, _ = self.encode_with_gate(x)
         return gated_z
 
     def encode_with_gate(self, x):
@@ -70,4 +70,4 @@ class autoencoder(nn.Module):
         )
         x_hat = self.decode(gated_z)
 
-        return z, gated_z, gate, x_hat
+        return z, gated_z, gate, x_hatseswss

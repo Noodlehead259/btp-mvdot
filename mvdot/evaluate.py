@@ -30,11 +30,7 @@ from mvdot.inference.consensus import (
     predict_clusters,
     select_reference_view
 )
-from mvdot.losses.confidence import (
-    cross_view_agreement,
-    normalize_source_mass,
-    sample_confidence
-)
+# Novelty 2 disabled: confidence-weighted transport is not used.
 
 
 def clustering_accuracy(
@@ -224,8 +220,6 @@ loader = torch.utils.data.DataLoader(
 
 predictions = []
 true_labels = []
-confidence_values1 = []
-confidence_values2 = []
 gate_values1 = []
 gate_values2 = []
 offset = 0
@@ -263,75 +257,6 @@ with torch.no_grad():
             checkpoint["cross_view_top_k"]
         )
 
-        agreement1, agreement2 = cross_view_agreement(
-            probabilities1,
-            probabilities2,
-            p12
-        )
-
-        confidence1 = sample_confidence(
-            (view1, xhat1),
-            probabilities1,
-            agreement1,
-            reconstruction_temperature=checkpoint.get(
-                "confidence_reconstruction_temperature",
-                0.05
-            ),
-            reconstruction_exponent=checkpoint.get(
-                "confidence_reconstruction_exponent",
-                1.0
-            ),
-            posterior_exponent=checkpoint.get(
-                "confidence_posterior_exponent",
-                1.0
-            ),
-            agreement_exponent=checkpoint.get(
-                "confidence_agreement_exponent",
-                1.0
-            )
-        )
-
-        confidence2 = sample_confidence(
-            (view2, xhat2),
-            probabilities2,
-            agreement2,
-            reconstruction_temperature=checkpoint.get(
-                "confidence_reconstruction_temperature",
-                0.05
-            ),
-            reconstruction_exponent=checkpoint.get(
-                "confidence_reconstruction_exponent",
-                1.0
-            ),
-            posterior_exponent=checkpoint.get(
-                "confidence_posterior_exponent",
-                1.0
-            ),
-            agreement_exponent=checkpoint.get(
-                "confidence_agreement_exponent",
-                1.0
-            )
-        )
-
-        source_mass1 = normalize_source_mass(
-            confidence1
-        )
-
-        source_mass2 = normalize_source_mass(
-            confidence2
-        )
-
-        p12 = compute_cross_view_plan(
-            h1,
-            h2,
-            centers,
-            checkpoint["epsilon"],
-            checkpoint["sinkhorn_iterations"],
-            checkpoint["cross_view_top_k"],
-            source_mass=source_mass1,
-            target_mass=source_mass2
-        )
-
         fused = fuse_batch_representations(
             h1,
             h2,
@@ -346,20 +271,12 @@ with torch.no_grad():
             predict_clusters(fused, centers).cpu()
         )
         true_labels.append(batch_labels)
-        confidence_values1.append(confidence1.cpu())
-        confidence_values2.append(confidence2.cpu())
         gate_values1.append(gate1.mean(dim=1).cpu())
         gate_values2.append(gate2.mean(dim=1).cpu())
         offset = end
 
 predictions = torch.cat(predictions).numpy()
 true_labels = torch.cat(true_labels).numpy()
-confidence_values1 = torch.cat(
-    confidence_values1
-).numpy()
-confidence_values2 = torch.cat(
-    confidence_values2
-).numpy()
 gate_values1 = torch.cat(
     gate_values1
 ).numpy()
@@ -393,14 +310,6 @@ print("view weight 2:", view_weight2)
 print("acc:", acc)
 print("nmi:", nmi)
 print("ari:", ari)
-print(
-    "mean confidence view 1:",
-    confidence_values1.mean()
-)
-print(
-    "mean confidence view 2:",
-    confidence_values2.mean()
-)
 print(
     "mean gate activation view 1:",
     gate_values1.mean()
