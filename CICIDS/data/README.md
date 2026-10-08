@@ -1,0 +1,3 @@
+# Source Data
+
+The original CIC-IDS2017 MachineLearningCVE CSV files belong in `MachineLearningCVE/` and are treated as read-only inputs. They are excluded from Git because the files are large; obtain the dataset separately before running the preprocessing pipeline. The preprocessing command accepts that directory directly. Generated normalized views, labels, and alignment experiments are written under `outputs/`, which is also excluded from Git.

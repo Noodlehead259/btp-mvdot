@@ -1,0 +1,11 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Raw CIC-IDS2017 source files are large and remain local.
+MachineLearningCVE/*.csv
+
+# Reproducible data products and generated reports.
+outputs/
+reports/
